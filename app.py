@@ -725,6 +725,6 @@ def player_stats():
     return render_template("player_stats.html", batting=batting, bowling=bowling)
 
 
-if __name__ == "__main__":
-    init_db()
+init_db()
+    if __name__ == "__main__":
     app.run(debug=True)
