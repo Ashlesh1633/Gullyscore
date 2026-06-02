@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero">
+    <h1>🏆 Cricket Tournament Management and Live Scoring System</h1>
+    <p>Advanced app with login, two innings, player stats, scorecard, commentary, and points table.</p>
+</div>
+
+<div class="grid">
+    <div class="card"><h3>Teams</h3><div class="score-big">{{ teams_count }}</div><a class="btn" href="/teams">Manage</a></div>
+    <div class="card"><h3>Players</h3><div class="score-big">{{ players_count }}</div><a class="btn" href="/players">Manage</a></div>
+    <div class="card"><h3>Matches</h3><div class="score-big">{{ matches_count }}</div><a class="btn" href="/matches">Manage</a></div>
+    <div class="card"><h3>Completed</h3><div class="score-big">{{ completed_count }}</div><a class="btn" href="/points">Points</a></div>
+</div>
+
+<h2>Live Matches</h2>
+{% if live_matches %}
+<div class="grid">
+{% for match in live_matches %}
+    <div class="card">
+        <h3>{{ match.team1_name }} vs {{ match.team2_name }}</h3>
+        <p>Innings: {{ match.current_innings }}</p>
+        <p>{{ match.first_batting_name }} batting first</p>
+        <a class="btn btn-green" href="/score/{{ match.id }}">Open Scoring</a>
+    </div>
+{% endfor %}
+</div>
+{% else %}
+<p>No live matches. Create a match now.</p>
+{% endif %}
+{% endblock %}

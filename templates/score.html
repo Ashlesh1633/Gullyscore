@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>{{ match.team1_name }} vs {{ match.team2_name }}</h2>
+<p class="small">Toss: {{ match.toss_winner_name or "-" }} | Status: {{ match.status }}</p>
+
+<div class="grid">
+{% for inn in innings_list %}
+<div class="card">
+    <h3>Innings {{ inn.innings_no }} - {{ inn.batting_team_name }}</h3>
+    <div class="score-big">{{ inn.runs }}/{{ inn.wickets }}</div>
+    <p>Overs: {{ balls_to_overs(inn.balls) }} / {{ match.total_overs }}</p>
+    <p>Status: {{ inn.status }}</p>
+</div>
+{% endfor %}
+</div>
+
+{% if target %}
+<div class="warning">
+    <strong>Target:</strong> {{ target }} runs
+</div>
+{% endif %}
+
+{% if match.status == "LIVE" %}
+<div class="card">
+<h3>Ball-by-Ball Scoring - Innings {{ innings.innings_no }}</h3>
+<p><strong>Batting:</strong> {{ innings.batting_team_name }} | <strong>Bowling:</strong> {{ innings.bowling_team_name }}</p>
+
+{% if batsmen and bowlers %}
+<form method="POST">
+    <label>Batsman</label>
+    <select name="batsman_id">
+        {% for p in batsmen %}
+        <option value="{{ p.id }}">{{ p.name }}</option>
+        {% endfor %}
+    </select>
+
+    <label>Bowler</label>
+    <select name="bowler_id">
+        {% for p in bowlers %}
+        <option value="{{ p.id }}">{{ p.name }}</option>
+        {% endfor %}
+    </select>
+
+    <label>Bat Runs</label>
+    <select name="runs">
+        <option value="0">0</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="6">6</option>
+    </select>
+
+    <label>Extra Type</label>
+    <select name="extra_type">
+        <option value="">No Extra</option>
+        <option>Wide</option>
+        <option>No Ball</option>
+        <option>Bye</option>
+        <option>Leg Bye</option>
+    </select>
+
+    <label>Extra Runs</label>
+    <input type="number" name="extra_runs" value="0" min="0">
+
+    <label>Wicket?</label>
+    <select name="is_wicket">
+        <option value="no">No</option>
+        <option value="yes">Yes</option>
+    </select>
+
+    <label>Out Player</label>
+    <select name="wicket_player_id">
+        <option value="">No Wicket</option>
+        {% for p in batsmen %}
+        <option value="{{ p.id }}">{{ p.name }}</option>
+        {% endfor %}
+    </select>
+
+    <label>Commentary Note</label>
+    <input name="note" placeholder="Example: Beautiful cover drive">
+
+    <button class="btn btn-green" type="submit">Add Ball</button>
+</form>
+{% else %}
+<p>Add players for both teams before scoring.</p>
+{% endif %}
+</div>
+{% else %}
+<div class="card">
+<h3>Result</h3>
+<p>{{ match.result_text }}</p>
+</div>
+{% endif %}
+
+<h3>Current Innings Batting Stats</h3>
+<table>
+<tr><th>Batsman</th><th>Runs</th><th>Balls</th><th>4s</th><th>6s</th><th>Status</th><th>SR</th></tr>
+{% for s in batting_stats %}
+<tr>
+    <td>{{ s.player_name }}</td>
+    <td>{{ s.runs }}</td>
+    <td>{{ s.balls }}</td>
+    <td>{{ s.fours }}</td>
+    <td>{{ s.sixes }}</td>
+    <td>{{ s.out_status }}</td>
+    <td>{{ "%.2f"|format((s.runs / s.balls * 100) if s.balls else 0) }}</td>
+</tr>
+{% endfor %}
+</table>
+
+<h3>Current Innings Bowling Stats</h3>
+<table>
+<tr><th>Bowler</th><th>Overs</th><th>Runs</th><th>Wickets</th></tr>
+{% for s in bowling_stats %}
+<tr>
+    <td>{{ s.player_name }}</td>
+    <td>{{ balls_to_overs(s.balls) }}</td>
+    <td>{{ s.runs_given }}</td>
+    <td>{{ s.wickets }}</td>
+</tr>
+{% endfor %}
+</table>
+
+<h3>Commentary</h3>
+<table>
+<tr><th>Inn</th><th>Over</th><th>Batsman</th><th>Bowler</th><th>Runs</th><th>Extra</th><th>Wicket</th><th>Note</th></tr>
+{% for b in balls %}
+<tr>
+    <td>{{ b.innings_no }}</td>
+    <td>{{ b.over_no }}.{{ b.ball_no }}</td>
+    <td>{{ b.batsman_name }}</td>
+    <td>{{ b.bowler_name }}</td>
+    <td>{{ b.runs + b.extra_runs }}</td>
+    <td>{{ b.extra_type or "-" }}</td>
+    <td>{{ b.wicket_player_name or "-" }}</td>
+    <td>{{ b.note }}</td>
+</tr>
+{% endfor %}
+</table>
+{% endblock %}

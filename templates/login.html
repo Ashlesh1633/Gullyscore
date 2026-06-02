@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login - Cricket App</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="login-body">
+    <div class="login-card">
+        <h2>🏏 Cricket Scoring Pro</h2>
+        <p class="small">Colorful live scoring dashboard for cricket tournaments.</p>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="flash">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <label>Username</label>
+            <input type="text" name="username" value="admin" required>
+
+            <label>Password</label>
+            <input type="password" name="password" value="admin123" required>
+
+            <button class="btn" type="submit">Login</button>
+        </form>
+
+        <p class="small">Default: admin / admin123</p>
+    </div>
+</body>
+</html>

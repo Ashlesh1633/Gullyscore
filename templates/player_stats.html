@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Player Statistics</h2>
+
+<h3>Batting Leaderboard</h3>
+<table>
+<tr><th>Player</th><th>Team</th><th>Runs</th><th>Balls</th><th>4s</th><th>6s</th><th>Strike Rate</th></tr>
+{% for p in batting %}
+<tr>
+    <td>{{ p.player_name }}</td>
+    <td>{{ p.team_name }}</td>
+    <td>{{ p.runs or 0 }}</td>
+    <td>{{ p.balls or 0 }}</td>
+    <td>{{ p.fours or 0 }}</td>
+    <td>{{ p.sixes or 0 }}</td>
+    <td>{{ "%.2f"|format(((p.runs or 0) / (p.balls or 1)) * 100) }}</td>
+</tr>
+{% endfor %}
+</table>
+
+<h3>Bowling Leaderboard</h3>
+<table>
+<tr><th>Player</th><th>Team</th><th>Overs</th><th>Runs Given</th><th>Wickets</th></tr>
+{% for p in bowling %}
+<tr>
+    <td>{{ p.player_name }}</td>
+    <td>{{ p.team_name }}</td>
+    <td>{{ balls_to_overs(p.balls or 0) }}</td>
+    <td>{{ p.runs_given or 0 }}</td>
+    <td>{{ p.wickets or 0 }}</td>
+</tr>
+{% endfor %}
+</table>
+{% endblock %}

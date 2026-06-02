@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Player Management</h2>
+
+<div class="card">
+{% if teams %}
+<form method="POST">
+    <label>Player Name</label>
+    <input name="name" required>
+    <label>Role</label>
+    <select name="role">
+        <option>Batsman</option>
+        <option>Bowler</option>
+        <option>All Rounder</option>
+        <option>Wicket Keeper</option>
+    </select>
+    <label>Team</label>
+    <select name="team_id">
+        {% for team in teams %}
+            <option value="{{ team.id }}">{{ team.name }}</option>
+        {% endfor %}
+    </select>
+    <button class="btn" type="submit">Add Player</button>
+</form>
+{% else %}
+<p>Add teams first.</p>
+{% endif %}
+</div>
+
+<table>
+<tr><th>Player</th><th>Role</th><th>Team</th><th>Action</th></tr>
+{% for player in players %}
+<tr>
+    <td>{{ player.name }}</td>
+    <td>{{ player.role }}</td>
+    <td>{{ player.team_name }}</td>
+    <td>
+        <form method="POST" action="/delete-player/{{ player.id }}">
+            <button class="btn btn-red" type="submit">Delete</button>
+        </form>
+    </td>
+</tr>
+{% endfor %}
+</table>
+{% endblock %}

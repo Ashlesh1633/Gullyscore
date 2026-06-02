@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Team Management</h2>
+
+<div class="card">
+<form method="POST">
+    <label>Team Name</label>
+    <input name="name" required>
+    <label>Captain</label>
+    <input name="captain">
+    <label>City</label>
+    <input name="city">
+    <button class="btn" type="submit">Add Team</button>
+</form>
+</div>
+
+<table>
+<tr><th>Team</th><th>Captain</th><th>City</th><th>Action</th></tr>
+{% for team in teams %}
+<tr>
+    <td>{{ team.name }}</td>
+    <td>{{ team.captain }}</td>
+    <td>{{ team.city }}</td>
+    <td>
+        <form method="POST" action="/delete-team/{{ team.id }}">
+            <button class="btn btn-red" type="submit">Delete</button>
+        </form>
+    </td>
+</tr>
+{% endfor %}
+</table>
+{% endblock %}

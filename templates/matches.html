@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Match Management</h2>
+
+<div class="card">
+<h3>Create New Match</h3>
+{% if teams|length >= 2 %}
+<form method="POST">
+    <label>Team 1</label>
+    <select name="team1_id">
+        {% for team in teams %}
+        <option value="{{ team.id }}">{{ team.name }}</option>
+        {% endfor %}
+    </select>
+
+    <label>Team 2</label>
+    <select name="team2_id">
+        {% for team in teams %}
+        <option value="{{ team.id }}">{{ team.name }}</option>
+        {% endfor %}
+    </select>
+
+    <label>Toss Winner</label>
+    <select name="toss_winner_id">
+        {% for team in teams %}
+        <option value="{{ team.id }}">{{ team.name }}</option>
+        {% endfor %}
+    </select>
+
+    <label>Batting First</label>
+    <select name="first_batting_team_id">
+        {% for team in teams %}
+        <option value="{{ team.id }}">{{ team.name }}</option>
+        {% endfor %}
+    </select>
+
+    <label>Total Overs</label>
+    <input type="number" name="total_overs" value="5" min="1" max="50">
+
+    <button class="btn" type="submit">Create Match</button>
+</form>
+{% else %}
+<p>Add at least 2 teams first.</p>
+{% endif %}
+</div>
+
+<table>
+<tr><th>Match</th><th>Status</th><th>Result</th><th>Action</th></tr>
+{% for match in matches %}
+<tr>
+    <td>{{ match.team1_name }} vs {{ match.team2_name }}</td>
+    <td><span class="badge">{{ match.status }}</span></td>
+    <td>{{ match.result_text or "-" }}</td>
+    <td><a class="btn btn-green" href="/score/{{ match.id }}">Open</a></td>
+</tr>
+{% endfor %}
+</table>
+{% endblock %}

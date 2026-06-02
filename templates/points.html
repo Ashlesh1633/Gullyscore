@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Points Table</h2>
+<table>
+<tr><th>Team</th><th>Played</th><th>Won</th><th>Lost</th><th>Tied</th><th>Points</th></tr>
+{% for row in table %}
+<tr>
+    <td>{{ row.team }}</td>
+    <td>{{ row.played }}</td>
+    <td>{{ row.won }}</td>
+    <td>{{ row.lost }}</td>
+    <td>{{ row.tied }}</td>
+    <td><strong>{{ row.points }}</strong></td>
+</tr>
+{% endfor %}
+</table>
+{% endblock %}
