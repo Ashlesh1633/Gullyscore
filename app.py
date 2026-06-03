@@ -243,33 +243,26 @@ def complete_match_if_needed(conn, match_id):
             WHERE id=?
         """, (winner_id, result, match_id))
 
-
 @app.route("/api/health")
 def api_health():
-    return jsonify({
-        "status": "success",
-        "message": "GullyScore API is running"
-    })
-    @app.route("/api/register", methods=["POST"])
+    return jsonify({"status": "success", "message": "GullyScore API is running"})
+
+
+@app.route("/api/register", methods=["POST"])
 def api_register():
-    data = request.get_json()
-    
+    data = request.get_json() or {}
+
     username = data.get("username", "").strip()
     password = data.get("password", "").strip()
 
     if len(username) < 3:
-        return jsonify({
-            "status": "error",
-            "message": "Username must be at least 3 characters"
-        }), 400
+        return jsonify({"status": "error", "message": "Username must be at least 3 characters"}), 400
 
     if len(password) < 4:
-        return jsonify({
-            "status": "error",
-            "message": "Password must be at least 4 characters"
-        }), 400
+        return jsonify({"status": "error", "message": "Password must be at least 4 characters"}), 400
 
     conn = get_db()
+
     try:
         conn.execute(
             "INSERT INTO users (username, password) VALUES (?, ?)",
@@ -277,25 +270,38 @@ def api_register():
         )
         conn.commit()
         conn.close()
+        return jsonify({"status": "success", "message": "Account created successfully"})
 
-        return jsonify({
-            "status": "success",
-            "message": "Account created successfully"
-        })
     except sqlite3.IntegrityError:
         conn.close()
-        return jsonify({
-            "status": "error",
-            "message": "Username already exists"
-        }), 400
+        return jsonify({"status": "error", "message": "Username already exists"}), 400
 
 
 @app.route("/api/login", methods=["POST"])
 def api_login():
-    data = request.get_json()
+    data = request.get_json() or {}
 
     username = data.get("username", "").strip()
     password = data.get("password", "").strip()
+
+    conn = get_db()
+    user = conn.execute(
+        "SELECT * FROM users WHERE username=? AND password=?",
+        (username, password)
+    ).fetchone()
+    conn.close()
+
+    if user:
+        return jsonify({
+            "status": "success",
+            "message": "Login successful",
+            "user": {
+                "id": user["id"],
+                "username": user["username"]
+            }
+        })
+
+    return jsonify({"status": "error", "message": "Wrong username or password"}), 401
 
     conn = get_db()
     user = conn.execute(
@@ -318,7 +324,34 @@ def api_login():
         "status": "error",
         "message": "Wrong username or password"
     }), 401
-    @app.route("/login", methods=["GET", "POST"])
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    data = request.get_json() or {}
+
+    username = data.get("username", "").strip()
+    password = data.get("password", "").strip()
+
+    conn = get_db()
+    user = conn.execute(
+        "SELECT * FROM users WHERE username=? AND password=?",
+        (username, password)
+    ).fetchone()
+    conn.close()
+
+    if user:
+        return jsonify({
+            "status": "success",
+            "message": "Login successful",
+            "user": {
+                "id": user["id"],
+                "username": user["username"]
+            }
+        })
+
+    return jsonify({"status": "error", "message": "Wrong username or password"}), 401
+
+
+@app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         username = request.form["username"]
@@ -335,6 +368,7 @@ def login():
             session["user_id"] = user["id"]
             session["username"] = user["username"]
             return redirect(url_for("index"))
+
         flash("Wrong username or password.")
 
     return render_template("login.html")
