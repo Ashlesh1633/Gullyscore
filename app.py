@@ -319,6 +319,7 @@ def api_login():
         "status": "error",
         "message": "Wrong username or password"
     }), 401
+    @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         username = request.form["username"]
