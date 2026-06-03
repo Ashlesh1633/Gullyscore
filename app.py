@@ -2,10 +2,11 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 import sqlite3
 from datetime import datetime
 from functools import wraps
+from flask_cors import CORS
 
 app = Flask(__name__)
-from flask_cors import CORS
 CORS(app)
+
 app.secret_key = "advanced-cricket-app-secret"
 DB_NAME = "cricket_v2.db"
 
@@ -193,6 +194,7 @@ def get_current_innings(conn, match_id):
     match = conn.execute("SELECT current_innings FROM matches WHERE id = ?", (match_id,)).fetchone()
     if not match:
         return None
+
     return conn.execute("""
         SELECT inn.*,
                bt.name AS batting_team_name,
@@ -243,9 +245,13 @@ def complete_match_if_needed(conn, match_id):
             WHERE id=?
         """, (winner_id, result, match_id))
 
+
 @app.route("/api/health")
 def api_health():
-    return jsonify({"status": "success", "message": "GullyScore API is running"})
+    return jsonify({
+        "status": "success",
+        "message": "GullyScore API is running"
+    })
 
 
 @app.route("/api/register", methods=["POST"])
@@ -256,10 +262,16 @@ def api_register():
     password = data.get("password", "").strip()
 
     if len(username) < 3:
-        return jsonify({"status": "error", "message": "Username must be at least 3 characters"}), 400
+        return jsonify({
+            "status": "error",
+            "message": "Username must be at least 3 characters"
+        }), 400
 
     if len(password) < 4:
-        return jsonify({"status": "error", "message": "Password must be at least 4 characters"}), 400
+        return jsonify({
+            "status": "error",
+            "message": "Password must be at least 4 characters"
+        }), 400
 
     conn = get_db()
 
@@ -270,11 +282,18 @@ def api_register():
         )
         conn.commit()
         conn.close()
-        return jsonify({"status": "success", "message": "Account created successfully"})
+
+        return jsonify({
+            "status": "success",
+            "message": "Account created successfully"
+        })
 
     except sqlite3.IntegrityError:
         conn.close()
-        return jsonify({"status": "error", "message": "Username already exists"}), 400
+        return jsonify({
+            "status": "error",
+            "message": "Username already exists"
+        }), 400
 
 
 @app.route("/api/login", methods=["POST"])
@@ -283,25 +302,6 @@ def api_login():
 
     username = data.get("username", "").strip()
     password = data.get("password", "").strip()
-
-    conn = get_db()
-    user = conn.execute(
-        "SELECT * FROM users WHERE username=? AND password=?",
-        (username, password)
-    ).fetchone()
-    conn.close()
-
-    if user:
-        return jsonify({
-            "status": "success",
-            "message": "Login successful",
-            "user": {
-                "id": user["id"],
-                "username": user["username"]
-            }
-        })
-
-    return jsonify({"status": "error", "message": "Wrong username or password"}), 401
 
     conn = get_db()
     user = conn.execute(
@@ -324,31 +324,6 @@ def api_login():
         "status": "error",
         "message": "Wrong username or password"
     }), 401
-@app.route("/api/login", methods=["POST"])
-def api_login():
-    data = request.get_json() or {}
-
-    username = data.get("username", "").strip()
-    password = data.get("password", "").strip()
-
-    conn = get_db()
-    user = conn.execute(
-        "SELECT * FROM users WHERE username=? AND password=?",
-        (username, password)
-    ).fetchone()
-    conn.close()
-
-    if user:
-        return jsonify({
-            "status": "success",
-            "message": "Login successful",
-            "user": {
-                "id": user["id"],
-                "username": user["username"]
-            }
-        })
-
-    return jsonify({"status": "error", "message": "Wrong username or password"}), 401
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -394,6 +369,7 @@ def register():
             return redirect(url_for("register"))
 
         conn = get_db()
+
         try:
             conn.execute(
                 "INSERT INTO users (username, password) VALUES (?, ?)",
@@ -401,8 +377,10 @@ def register():
             )
             conn.commit()
             conn.close()
+
             flash("Account created successfully. Please login.")
             return redirect(url_for("login"))
+
         except sqlite3.IntegrityError:
             conn.close()
             flash("Username already exists. Try another username.")
@@ -421,10 +399,13 @@ def logout():
 @login_required
 def index():
     conn = get_db()
+
     teams_count = row_count(conn, "teams")
     players_count = row_count(conn, "players")
     matches_count = row_count(conn, "matches")
-    completed_count = conn.execute("SELECT COUNT(*) AS c FROM matches WHERE status='COMPLETED'").fetchone()["c"]
+    completed_count = conn.execute(
+        "SELECT COUNT(*) AS c FROM matches WHERE status='COMPLETED'"
+    ).fetchone()["c"]
 
     live_matches = conn.execute("""
         SELECT m.*,
@@ -440,6 +421,7 @@ def index():
         WHERE m.status='LIVE'
         ORDER BY m.id DESC
     """).fetchall()
+
     conn.close()
 
     return render_template(
@@ -456,20 +438,27 @@ def index():
 @login_required
 def teams():
     conn = get_db()
+
     if request.method == "POST":
         try:
             conn.execute(
                 "INSERT INTO teams (name, captain, city) VALUES (?, ?, ?)",
-                (request.form["name"].strip(), request.form["captain"].strip(), request.form["city"].strip())
+                (
+                    request.form["name"].strip(),
+                    request.form["captain"].strip(),
+                    request.form["city"].strip()
+                )
             )
             conn.commit()
             flash("Team added.")
         except sqlite3.IntegrityError:
             flash("Team name already exists.")
+
         return redirect(url_for("teams"))
 
     teams_data = conn.execute("SELECT * FROM teams ORDER BY id DESC").fetchall()
     conn.close()
+
     return render_template("teams.html", teams=teams_data)
 
 
@@ -477,9 +466,11 @@ def teams():
 @login_required
 def delete_team(team_id):
     conn = get_db()
+
     used = conn.execute("""
         SELECT COUNT(*) AS c FROM matches WHERE team1_id=? OR team2_id=?
     """, (team_id, team_id)).fetchone()["c"]
+
     if used:
         flash("Cannot delete team used in matches.")
     else:
@@ -487,7 +478,9 @@ def delete_team(team_id):
         conn.execute("DELETE FROM teams WHERE id=?", (team_id,))
         conn.commit()
         flash("Team deleted.")
+
     conn.close()
+
     return redirect(url_for("teams"))
 
 
@@ -500,10 +493,16 @@ def players():
     if request.method == "POST":
         conn.execute(
             "INSERT INTO players (name, role, team_id) VALUES (?, ?, ?)",
-            (request.form["name"].strip(), request.form["role"], request.form["team_id"])
+            (
+                request.form["name"].strip(),
+                request.form["role"],
+                request.form["team_id"]
+            )
         )
         conn.commit()
         flash("Player added.")
+        conn.close()
+
         return redirect(url_for("players"))
 
     players_data = conn.execute("""
@@ -512,7 +511,9 @@ def players():
         JOIN teams t ON p.team_id=t.id
         ORDER BY t.name, p.name
     """).fetchall()
+
     conn.close()
+
     return render_template("players.html", players=players_data, teams=teams_data)
 
 
@@ -520,17 +521,21 @@ def players():
 @login_required
 def delete_player(player_id):
     conn = get_db()
+
     used = conn.execute("""
         SELECT COUNT(*) AS c FROM balls
         WHERE batsman_id=? OR bowler_id=? OR wicket_player_id=?
     """, (player_id, player_id, player_id)).fetchone()["c"]
+
     if used:
         flash("Cannot delete player used in scoring.")
     else:
         conn.execute("DELETE FROM players WHERE id=?", (player_id,))
         conn.commit()
         flash("Player deleted.")
+
     conn.close()
+
     return redirect(url_for("players"))
 
 
@@ -549,15 +554,18 @@ def matches():
 
         if team1_id == team2_id:
             flash("Both teams cannot be same.")
+            conn.close()
             return redirect(url_for("matches"))
 
         if first_batting_team_id not in [team1_id, team2_id]:
             flash("Batting team must be one of selected teams.")
+            conn.close()
             return redirect(url_for("matches"))
 
         second_batting_team_id = team2_id if first_batting_team_id == team1_id else team1_id
 
         cur = conn.cursor()
+
         cur.execute("""
             INSERT INTO matches (
                 team1_id, team2_id, toss_winner_id, first_batting_team_id,
@@ -565,10 +573,15 @@ def matches():
             )
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (
-            team1_id, team2_id, toss_winner_id, first_batting_team_id,
-            second_batting_team_id, total_overs,
+            team1_id,
+            team2_id,
+            toss_winner_id,
+            first_batting_team_id,
+            second_batting_team_id,
+            total_overs,
             datetime.now().strftime("%Y-%m-%d %H:%M")
         ))
+
         match_id = cur.lastrowid
 
         conn.execute("""
@@ -579,7 +592,10 @@ def matches():
         """, (match_id, first_batting_team_id, second_batting_team_id))
 
         conn.commit()
+        conn.close()
+
         flash("Match created.")
+
         return redirect(url_for("score", match_id=match_id))
 
     matches_data = conn.execute("""
@@ -593,7 +609,9 @@ def matches():
         LEFT JOIN teams wt ON m.winner_team_id=wt.id
         ORDER BY m.id DESC
     """).fetchall()
+
     conn.close()
+
     return render_template("matches.html", teams=teams_data, matches=matches_data)
 
 
@@ -601,7 +619,9 @@ def matches():
 @login_required
 def score(match_id):
     conn = get_db()
+
     match = get_match(conn, match_id)
+
     if not match:
         conn.close()
         flash("Match not found.")
@@ -618,6 +638,7 @@ def score(match_id):
         "SELECT * FROM players WHERE team_id=? ORDER BY name",
         (innings["batting_team_id"],)
     ).fetchall()
+
     bowlers = conn.execute(
         "SELECT * FROM players WHERE team_id=? ORDER BY name",
         (innings["bowling_team_id"],)
@@ -641,6 +662,7 @@ def score(match_id):
 
         over_no = new_balls // 6
         ball_no = new_balls % 6
+
         if legal_ball == 1 and ball_no == 0:
             over_no -= 1
             ball_no = 6
@@ -656,9 +678,20 @@ def score(match_id):
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            match_id, innings["id"], innings["innings_no"], over_no, ball_no,
-            batsman_id, bowler_id, runs, extra_type, extra_runs,
-            is_wicket, wicket_player_id, note, datetime.now().strftime("%H:%M:%S")
+            match_id,
+            innings["id"],
+            innings["innings_no"],
+            over_no,
+            ball_no,
+            batsman_id,
+            bowler_id,
+            runs,
+            extra_type,
+            extra_runs,
+            is_wicket,
+            wicket_player_id,
+            note,
+            datetime.now().strftime("%H:%M:%S")
         ))
 
         ensure_batting_stat(conn, match_id, innings["id"], batsman_id)
@@ -694,6 +727,7 @@ def score(match_id):
 
         innings_status = "LIVE"
         innings_completed = False
+
         if new_wickets >= 10 or new_balls >= match["total_overs"] * 6:
             innings_status = "COMPLETED"
             innings_completed = True
@@ -702,6 +736,7 @@ def score(match_id):
             first_innings = conn.execute("""
                 SELECT * FROM innings WHERE match_id=? AND innings_no=1
             """, (match_id,)).fetchone()
+
             if new_runs > first_innings["runs"]:
                 innings_status = "COMPLETED"
                 innings_completed = True
@@ -731,11 +766,13 @@ def score(match_id):
         elif innings_completed and innings["innings_no"] == 2:
             complete_match_if_needed(conn, match_id)
             flash("Match completed.")
+
         else:
             flash("Ball added.")
 
         conn.commit()
         conn.close()
+
         return redirect(url_for("score", match_id=match_id))
 
     innings_list = conn.execute("""
@@ -779,8 +816,12 @@ def score(match_id):
     """, (match_id, innings["id"])).fetchall()
 
     target = None
+
     if innings["innings_no"] == 2:
-        first_innings = conn.execute("SELECT * FROM innings WHERE match_id=? AND innings_no=1", (match_id,)).fetchone()
+        first_innings = conn.execute(
+            "SELECT * FROM innings WHERE match_id=? AND innings_no=1",
+            (match_id,)
+        ).fetchone()
         target = first_innings["runs"] + 1
 
     conn.close()
@@ -837,6 +878,7 @@ def points():
 
     table.sort(key=lambda x: x["points"], reverse=True)
     conn.close()
+
     return render_template("points.html", table=table)
 
 
@@ -844,6 +886,7 @@ def points():
 @login_required
 def player_stats():
     conn = get_db()
+
     batting = conn.execute("""
         SELECT p.name AS player_name, t.name AS team_name,
                SUM(bs.runs) AS runs,
@@ -868,7 +911,9 @@ def player_stats():
         GROUP BY p.id
         ORDER BY wickets DESC
     """).fetchall()
+
     conn.close()
+
     return render_template("player_stats.html", batting=batting, bowling=bowling)
 
 
