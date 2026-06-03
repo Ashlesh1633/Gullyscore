@@ -262,7 +262,6 @@ def login():
         flash("Wrong username or password.")
 
     return render_template("login.html")
-        return render_template("login.html")
 
 
 @app.route("/register", methods=["GET", "POST"])
