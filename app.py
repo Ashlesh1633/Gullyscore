@@ -1,9 +1,11 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 import sqlite3
 from datetime import datetime
 from functools import wraps
 
 app = Flask(__name__)
+from flask_cors import CORS
+CORS(app)
 app.secret_key = "advanced-cricket-app-secret"
 DB_NAME = "cricket_v2.db"
 
@@ -243,6 +245,12 @@ def complete_match_if_needed(conn, match_id):
 
 
 @app.route("/login", methods=["GET", "POST"])
+@app.route("/api/health")
+def api_health():
+    return jsonify({
+        "status": "success",
+        "message": "GullyScore API is running"
+    })
 def login():
     if request.method == "POST":
         username = request.form["username"]
