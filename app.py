@@ -536,6 +536,95 @@ def api_live_matches():
         "status": "success",
         "matches": data
     })
+    
+
+@app.route("/api/set-stream-link", methods=["POST"])
+def api_set_stream_link():
+    data = request.get_json() or {}
+
+    stream_link = data.get("stream_link", "").strip()
+    title = data.get("title", "GullyScore Live Stream").strip()
+
+    if not stream_link:
+        return jsonify({
+            "status": "error",
+            "message": "Stream link is required"
+        }), 400
+
+    if "youtube.com" not in stream_link and "youtu.be" not in stream_link:
+        return jsonify({
+            "status": "error",
+            "message": "Only YouTube live links are allowed"
+        }), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS stream_links (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            stream_link TEXT NOT NULL,
+            created_at TEXT
+        )
+    """)
+
+    cur.execute("DELETE FROM stream_links")
+
+    cur.execute("""
+        INSERT INTO stream_links (title, stream_link, created_at)
+        VALUES (?, ?, ?)
+    """, (
+        title,
+        stream_link,
+        datetime.now().strftime("%Y-%m-%d %H:%M")
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "status": "success",
+        "message": "Stream link saved successfully"
+    })
+
+
+@app.route("/api/get-stream-link", methods=["GET"])
+def api_get_stream_link():
+    conn = get_db()
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS stream_links (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            stream_link TEXT NOT NULL,
+            created_at TEXT
+        )
+    """)
+
+    stream = conn.execute("""
+        SELECT title, stream_link, created_at
+        FROM stream_links
+        ORDER BY id DESC
+        LIMIT 1
+    """).fetchone()
+
+    conn.close()
+
+    if not stream:
+        return jsonify({
+            "status": "success",
+            "has_stream": False,
+            "message": "No live stream link added yet"
+        })
+
+    return jsonify({
+        "status": "success",
+        "has_stream": True,
+        "title": stream["title"],
+        "stream_link": stream["stream_link"],
+        "created_at": stream["created_at"]
+    })
 @app.route("/players", methods=["GET", "POST"])
 @login_required
 def players():
