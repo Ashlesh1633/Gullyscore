@@ -483,7 +483,59 @@ def delete_team(team_id):
 
     return redirect(url_for("teams"))
 
+@app.route("/api/live-matches")
+def api_live_matches():
+    conn = get_db()
 
+    matches = conn.execute("""
+        SELECT m.id,
+               m.status,
+               m.total_overs,
+               t1.name AS team1_name,
+               t2.name AS team2_name,
+               inn.innings_no,
+               inn.runs,
+               inn.wickets,
+               inn.balls,
+               bt.name AS batting_team_name,
+               bw.name AS bowling_team_name
+        FROM matches m
+        JOIN teams t1 ON m.team1_id = t1.id
+        JOIN teams t2 ON m.team2_id = t2.id
+        LEFT JOIN innings inn ON inn.match_id = m.id AND inn.innings_no = m.current_innings
+        LEFT JOIN teams bt ON inn.batting_team_id = bt.id
+        LEFT JOIN teams bw ON inn.bowling_team_id = bw.id
+        WHERE m.status = 'LIVE'
+        ORDER BY m.id DESC
+    """).fetchall()
+
+    data = []
+
+    for match in matches:
+        balls = match["balls"] or 0
+        overs = f"{balls // 6}.{balls % 6}"
+
+        data.append({
+            "id": match["id"],
+            "team1": match["team1_name"],
+            "team2": match["team2_name"],
+            "status": match["status"],
+            "innings_no": match["innings_no"],
+            "batting_team": match["batting_team_name"],
+            "bowling_team": match["bowling_team_name"],
+            "runs": match["runs"] or 0,
+            "wickets": match["wickets"] or 0,
+            "overs": overs,
+            "total_overs": match["total_overs"],
+            "public_score_link": f"https://gullyscore-1.onrender.com/score/{match['id']}"
+        })
+
+    conn.close()
+
+    return jsonify({
+        "status": "success",
+        "matches": data
+    })
 @app.route("/players", methods=["GET", "POST"])
 @login_required
 def players():
