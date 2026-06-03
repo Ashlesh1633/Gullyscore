@@ -262,6 +262,44 @@ def login():
         flash("Wrong username or password.")
 
     return render_template("login.html")
+        return render_template("login.html")
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        username = request.form["username"].strip()
+        password = request.form["password"].strip()
+        confirm_password = request.form["confirm_password"].strip()
+
+        if password != confirm_password:
+            flash("Passwords do not match.")
+            return redirect(url_for("register"))
+
+        if len(username) < 3:
+            flash("Username must be at least 3 characters.")
+            return redirect(url_for("register"))
+
+        if len(password) < 4:
+            flash("Password must be at least 4 characters.")
+            return redirect(url_for("register"))
+
+        conn = get_db()
+        try:
+            conn.execute(
+                "INSERT INTO users (username, password) VALUES (?, ?)",
+                (username, password)
+            )
+            conn.commit()
+            conn.close()
+            flash("Account created successfully. Please login.")
+            return redirect(url_for("login"))
+        except sqlite3.IntegrityError:
+            conn.close()
+            flash("Username already exists. Try another username.")
+            return redirect(url_for("register"))
+
+    return render_template("register.html")
 
 
 @app.route("/logout")
