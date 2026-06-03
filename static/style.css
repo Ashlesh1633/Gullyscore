@@ -303,3 +303,41 @@ form {
         padding: 28px;
     }
 }
+
+/* Different colors for navbar options */
+.navbar a[href="/"] {
+    background: linear-gradient(135deg, #7c3aed, #2563eb);
+}
+
+.navbar a[href="/teams"] {
+    background: linear-gradient(135deg, #16a34a, #22c55e);
+}
+
+.navbar a[href="/players"] {
+    background: linear-gradient(135deg, #f97316, #f59e0b);
+}
+
+.navbar a[href="/matches"] {
+    background: linear-gradient(135deg, #dc2626, #ec4899);
+}
+
+.navbar a[href="/points"] {
+    background: linear-gradient(135deg, #0891b2, #06b6d4);
+}
+
+.navbar a[href="/player-stats"] {
+    background: linear-gradient(135deg, #9333ea, #db2777);
+}
+
+.navbar a[href="/logout"] {
+    background: linear-gradient(135deg, #111827, #475569);
+}
+
+.navbar a {
+    box-shadow: 0 6px 14px rgba(0,0,0,0.18);
+}
+
+.navbar a:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.12);
+}
