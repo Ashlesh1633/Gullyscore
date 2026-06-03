@@ -625,6 +625,69 @@ def api_get_stream_link():
         "stream_link": stream["stream_link"],
         "created_at": stream["created_at"]
     })
+    @app.route("/api/teams", methods=["GET"])
+def api_get_teams():
+    conn = get_db()
+
+    teams = conn.execute("""
+        SELECT id, name, captain, city
+        FROM teams
+        ORDER BY id DESC
+    """).fetchall()
+
+    data = []
+
+    for team in teams:
+        data.append({
+            "id": team["id"],
+            "name": team["name"],
+            "captain": team["captain"] or "",
+            "city": team["city"] or ""
+        })
+
+    conn.close()
+
+    return jsonify({
+        "status": "success",
+        "teams": data
+    })
+
+
+@app.route("/api/teams", methods=["POST"])
+def api_add_team():
+    data = request.get_json() or {}
+
+    name = data.get("name", "").strip()
+    captain = data.get("captain", "").strip()
+    city = data.get("city", "").strip()
+
+    if len(name) < 2:
+        return jsonify({
+            "status": "error",
+            "message": "Team name is required"
+        }), 400
+
+    conn = get_db()
+
+    try:
+        conn.execute(
+            "INSERT INTO teams (name, captain, city) VALUES (?, ?, ?)",
+            (name, captain, city)
+        )
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "status": "success",
+            "message": "Team added successfully"
+        })
+
+    except sqlite3.IntegrityError:
+        conn.close()
+        return jsonify({
+            "status": "error",
+            "message": "Team name already exists"
+        }), 400
 @app.route("/players", methods=["GET", "POST"])
 @login_required
 def players():
