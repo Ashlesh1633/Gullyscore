@@ -1,1 +1,36 @@
-templates/register.html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Register - Cricket App</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="login-body">
+    <div class="login-card">
+        <h2>🏏 Create Account</h2>
+        <p class="small">Set your own username and password.</p>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="flash">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <label>Username</label>
+            <input type="text" name="username" placeholder="Enter username" required>
+
+            <label>Password</label>
+            <input type="password" name="password" placeholder="Enter password" required>
+
+            <label>Confirm Password</label>
+            <input type="password" name="confirm_password" placeholder="Confirm password" required>
+
+            <button class="btn" type="submit">Create Account</button>
+        </form>
+
+        <p class="small">Already have account? <a href="/login">Login here</a></p>
+    </div>
+</body>
+</html>
