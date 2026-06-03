@@ -244,7 +244,6 @@ def complete_match_if_needed(conn, match_id):
         """, (winner_id, result, match_id))
 
 
-@app.route("/login", methods=["GET", "POST"])
 @app.route("/api/health")
 def api_health():
     return jsonify({
@@ -254,7 +253,7 @@ def api_health():
     @app.route("/api/register", methods=["POST"])
 def api_register():
     data = request.get_json()
-
+    
     username = data.get("username", "").strip()
     password = data.get("password", "").strip()
 
