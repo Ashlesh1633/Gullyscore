@@ -625,7 +625,7 @@ def api_get_stream_link():
         "stream_link": stream["stream_link"],
         "created_at": stream["created_at"]
     })
-    @app.route("/api/teams", methods=["GET"])
+@app.route("/api/teams", methods=["GET"])
 def api_get_teams():
     conn = get_db()
 
