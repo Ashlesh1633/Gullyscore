@@ -28,18 +28,33 @@
 {% if batsmen and bowlers %}
 <form method="POST">
     <label>Batsman</label>
-    <select name="batsman_id">
+    <select name="batsman_id" id="striker_id">
         {% for p in batsmen %}
         <option value="{{ p.id }}">{{ p.name }}</option>
         {% endfor %}
     </select>
+    <label>Non-Striker</label>
+<select id="non_striker_id">
+    {% for p in batsmen %}
+    <option value="{{ p.id }}">{{ p.name }}</option>
+    {% endfor %}
+</select>
 
     <label>Bowler</label>
-    <select name="bowler_id">
-        {% for p in bowlers %}
-        <option value="{{ p.id }}">{{ p.name }}</option>
-        {% endfor %}
-    </select>
+<select name="bowler_id" id="bowler_id">
+    {% set last_bowler_id = balls[0].bowler_id if balls else None %}
+    {% for p in bowlers %}
+        <option value="{{ p.id }}" {% if innings.balls > 0 and innings.balls % 6 == 0 and p.id == last_bowler_id %}disabled{% endif %}>
+            {{ p.name }}{% if innings.balls > 0 and innings.balls % 6 == 0 and p.id == last_bowler_id %} - Cannot bowl next over{% endif %}
+        </option>
+    {% endfor %}
+</select>
+
+<div id="overMessage" style="display:none; margin: 12px 0; padding: 12px; border-radius: 12px; background: #fff7ed; color: #9a3412; font-weight: bold;">
+    Over completed ✅ Select next bowler
+    <br>
+    <span id="remainingBowlers"></span>
+</div>
 
     <label>Bat Runs</label>
     <select name="runs">
@@ -138,4 +153,75 @@
 </tr>
 {% endfor %}
 </table>
+<script>
+    const matchId = "{{ match.id }}";
+    const inningsNo = "{{ innings.innings_no }}";
+    const storageKey = "strike_" + matchId + "_" + inningsNo;
+
+    const strikerSelect = document.querySelector('select[name="batsman_id"]');
+    const nonStrikerSelect = document.getElementById("non_striker_id");
+    const runsSelect = document.querySelector('select[name="runs"]');
+    const extraTypeSelect = document.querySelector('select[name="extra_type"]');
+    const extraRunsInput = document.querySelector('input[name="extra_runs"]');
+    const scoringForm = document.querySelector('form[method="POST"]');
+
+    const currentBalls = Number("{{ innings.balls }}");
+
+    function saveStrike() {
+        localStorage.setItem(storageKey, JSON.stringify({
+            striker: strikerSelect.value,
+            nonStriker: nonStrikerSelect.value
+        }));
+    }
+
+    function loadStrike() {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+            const data = JSON.parse(saved);
+            strikerSelect.value = data.striker;
+            nonStrikerSelect.value = data.nonStriker;
+        }
+    }
+
+    function swapStrike() {
+        const temp = strikerSelect.value;
+        strikerSelect.value = nonStrikerSelect.value;
+        nonStrikerSelect.value = temp;
+    }
+
+    loadStrike();
+
+    strikerSelect.addEventListener("change", saveStrike);
+    nonStrikerSelect.addEventListener("change", saveStrike);
+
+    scoringForm.addEventListener("submit", function () {
+        let runs = Number(runsSelect.value);
+        let extraRuns = Number(extraRunsInput.value || 0);
+        let extraType = extraTypeSelect.value;
+
+        let totalRuns = runs + extraRuns;
+
+        let legalBall = true;
+        if (extraType === "Wide" || extraType === "No Ball") {
+            legalBall = false;
+        }
+
+        let strikeChange = false;
+
+        if (totalRuns % 2 === 1) {
+            strikeChange = !strikeChange;
+        }
+
+        if (legalBall && (currentBalls + 1) % 6 === 0) {
+            strikeChange = !strikeChange;
+        }
+
+        if (strikeChange) {
+            swapStrike();
+        }
+
+        saveStrike();
+        showOverCompletedMessage();
+    });
+</script>
 {% endblock %}
