@@ -768,6 +768,158 @@ def api_add_player():
         "status": "success",
         "message": "Player added successfully"
     })
+    @app.route("/api/matches", methods=["GET"])
+def api_get_matches():
+    conn = get_db()
+
+    matches = conn.execute("""
+        SELECT m.id,
+               m.status,
+               m.total_overs,
+               m.created_at,
+               t1.name AS team1_name,
+               t2.name AS team2_name,
+               fb.name AS first_batting_name,
+               sb.name AS second_batting_name,
+               wt.name AS winner_name,
+               inn.runs,
+               inn.wickets,
+               inn.balls
+        FROM matches m
+        JOIN teams t1 ON m.team1_id = t1.id
+        JOIN teams t2 ON m.team2_id = t2.id
+        JOIN teams fb ON m.first_batting_team_id = fb.id
+        JOIN teams sb ON m.second_batting_team_id = sb.id
+        LEFT JOIN teams wt ON m.winner_team_id = wt.id
+        LEFT JOIN innings inn ON inn.match_id = m.id AND inn.innings_no = m.current_innings
+        ORDER BY m.id DESC
+    """).fetchall()
+
+    data = []
+
+    for match in matches:
+        balls = match["balls"] or 0
+        overs = f"{balls // 6}.{balls % 6}"
+
+        data.append({
+            "id": match["id"],
+            "team1": match["team1_name"],
+            "team2": match["team2_name"],
+            "status": match["status"],
+            "total_overs": match["total_overs"],
+            "created_at": match["created_at"] or "",
+            "first_batting": match["first_batting_name"],
+            "second_batting": match["second_batting_name"],
+            "winner": match["winner_name"] or "",
+            "runs": match["runs"] or 0,
+            "wickets": match["wickets"] or 0,
+            "overs": overs
+        })
+
+    conn.close()
+
+    return jsonify({
+        "status": "success",
+        "matches": data
+    })
+
+
+@app.route("/api/matches", methods=["POST"])
+def api_add_match():
+    data = request.get_json() or {}
+
+    team1_id = data.get("team1_id")
+    team2_id = data.get("team2_id")
+    total_overs = int(data.get("total_overs") or 5)
+    first_batting_team_id = data.get("first_batting_team_id")
+
+    if not team1_id or not team2_id:
+        return jsonify({
+            "status": "error",
+            "message": "Both teams are required"
+        }), 400
+
+    team1_id = int(team1_id)
+    team2_id = int(team2_id)
+
+    if team1_id == team2_id:
+        return jsonify({
+            "status": "error",
+            "message": "Both teams cannot be same"
+        }), 400
+
+    if not first_batting_team_id:
+        first_batting_team_id = team1_id
+
+    first_batting_team_id = int(first_batting_team_id)
+
+    if first_batting_team_id not in [team1_id, team2_id]:
+        return jsonify({
+            "status": "error",
+            "message": "Batting team must be Team 1 or Team 2"
+        }), 400
+
+    second_batting_team_id = team2_id if first_batting_team_id == team1_id else team1_id
+
+    conn = get_db()
+
+    team1 = conn.execute("SELECT id FROM teams WHERE id=?", (team1_id,)).fetchone()
+    team2 = conn.execute("SELECT id FROM teams WHERE id=?", (team2_id,)).fetchone()
+
+    if not team1 or not team2:
+        conn.close()
+        return jsonify({
+            "status": "error",
+            "message": "Team not found"
+        }), 404
+
+    cur = conn.cursor()
+
+    cur.execute("""
+        INSERT INTO matches (
+            team1_id,
+            team2_id,
+            toss_winner_id,
+            first_batting_team_id,
+            second_batting_team_id,
+            total_overs,
+            created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        team1_id,
+        team2_id,
+        None,
+        first_batting_team_id,
+        second_batting_team_id,
+        total_overs,
+        datetime.now().strftime("%Y-%m-%d %H:%M")
+    ))
+
+    match_id = cur.lastrowid
+
+    conn.execute("""
+        INSERT INTO innings (
+            match_id,
+            innings_no,
+            batting_team_id,
+            bowling_team_id
+        )
+        VALUES (?, 1, ?, ?)
+    """, (
+        match_id,
+        first_batting_team_id,
+        second_batting_team_id
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "status": "success",
+        "message": "Match created successfully",
+        "match_id": match_id
+    })
 @app.route("/players", methods=["GET", "POST"])
 @login_required
 def players():
