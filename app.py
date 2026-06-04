@@ -688,7 +688,7 @@ def api_add_team():
             "status": "error",
             "message": "Team name already exists"
         }), 400
-        @app.route("/api/players", methods=["GET"])
+@app.route("/api/players", methods=["GET"])
 def api_get_players():
     conn = get_db()
 
