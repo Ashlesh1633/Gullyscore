@@ -920,6 +920,177 @@ def api_add_match():
         "message": "Match created successfully",
         "match_id": match_id
     })
+@app.route("/api/add-score", methods=["POST"])
+def api_add_score():
+    data = request.get_json() or {}
+
+    match_id = data.get("match_id")
+    runs = int(data.get("runs") or 0)
+    extra_type = data.get("extra_type", "").strip()
+    extra_runs = int(data.get("extra_runs") or 0)
+    is_wicket = 1 if data.get("is_wicket") else 0
+    note = data.get("note", "").strip()
+
+    if not match_id:
+        return jsonify({
+            "status": "error",
+            "message": "Match ID is required"
+        }), 400
+
+    conn = get_db()
+
+    match = get_match(conn, int(match_id))
+
+    if not match:
+        conn.close()
+        return jsonify({
+            "status": "error",
+            "message": "Match not found"
+        }), 404
+
+    if match["status"] != "LIVE":
+        conn.close()
+        return jsonify({
+            "status": "error",
+            "message": "Match is already completed"
+        }), 400
+
+    innings = get_current_innings(conn, int(match_id))
+
+    if not innings:
+        conn.close()
+        return jsonify({
+            "status": "error",
+            "message": "Innings not found"
+        }), 404
+
+    legal_ball = 0 if extra_type in ["Wide", "No Ball"] else 1
+    total_runs_this_ball = runs + extra_runs
+
+    new_balls = innings["balls"] + legal_ball
+    new_runs = innings["runs"] + total_runs_this_ball
+    new_wickets = innings["wickets"] + is_wicket
+
+    over_no = new_balls // 6
+    ball_no = new_balls % 6
+
+    if legal_ball == 1 and ball_no == 0:
+        over_no -= 1
+        ball_no = 6
+    elif legal_ball == 0:
+        over_no = innings["balls"] // 6
+        ball_no = innings["balls"] % 6 + 1
+
+    conn.execute("""
+        INSERT INTO balls (
+            match_id,
+            innings_id,
+            innings_no,
+            over_no,
+            ball_no,
+            batsman_id,
+            bowler_id,
+            runs,
+            extra_type,
+            extra_runs,
+            is_wicket,
+            wicket_player_id,
+            note,
+            created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        int(match_id),
+        innings["id"],
+        innings["innings_no"],
+        over_no,
+        ball_no,
+        None,
+        None,
+        runs,
+        extra_type,
+        extra_runs,
+        is_wicket,
+        None,
+        note,
+        datetime.now().strftime("%H:%M:%S")
+    ))
+
+    innings_status = "LIVE"
+    innings_completed = False
+
+    if new_wickets >= 10 or new_balls >= match["total_overs"] * 6:
+        innings_status = "COMPLETED"
+        innings_completed = True
+
+    if innings["innings_no"] == 2:
+        first_innings = conn.execute("""
+            SELECT * FROM innings WHERE match_id=? AND innings_no=1
+        """, (int(match_id),)).fetchone()
+
+        if first_innings and new_runs > first_innings["runs"]:
+            innings_status = "COMPLETED"
+            innings_completed = True
+
+    conn.execute("""
+        UPDATE innings
+        SET runs=?, wickets=?, balls=?, status=?
+        WHERE id=?
+    """, (
+        new_runs,
+        new_wickets,
+        new_balls,
+        innings_status,
+        innings["id"]
+    ))
+
+    message = "Score added successfully"
+
+    if innings_completed and innings["innings_no"] == 1:
+        existing_second = conn.execute("""
+            SELECT * FROM innings WHERE match_id=? AND innings_no=2
+        """, (int(match_id),)).fetchone()
+
+        if not existing_second:
+            conn.execute("""
+                INSERT INTO innings (
+                    match_id,
+                    innings_no,
+                    batting_team_id,
+                    bowling_team_id
+                )
+                VALUES (?, 2, ?, ?)
+            """, (
+                int(match_id),
+                match["second_batting_team_id"],
+                match["first_batting_team_id"]
+            ))
+
+        conn.execute("""
+            UPDATE matches
+            SET current_innings=2
+            WHERE id=?
+        """, (int(match_id),))
+
+        message = "First innings completed. Second innings started."
+
+    elif innings_completed and innings["innings_no"] == 2:
+        complete_match_if_needed(conn, int(match_id))
+        message = "Match completed."
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "status": "success",
+        "message": message,
+        "score": {
+            "runs": new_runs,
+            "wickets": new_wickets,
+            "balls": new_balls,
+            "overs": f"{new_balls // 6}.{new_balls % 6}"
+        }
+    })
 @app.route("/players", methods=["GET", "POST"])
 @login_required
 def players():
