@@ -688,6 +688,86 @@ def api_add_team():
             "status": "error",
             "message": "Team name already exists"
         }), 400
+        @app.route("/api/players", methods=["GET"])
+def api_get_players():
+    conn = get_db()
+
+    players = conn.execute("""
+        SELECT p.id,
+               p.name,
+               p.role,
+               p.team_id,
+               t.name AS team_name
+        FROM players p
+        JOIN teams t ON p.team_id = t.id
+        ORDER BY p.id DESC
+    """).fetchall()
+
+    data = []
+
+    for player in players:
+        data.append({
+            "id": player["id"],
+            "name": player["name"],
+            "role": player["role"] or "",
+            "team_id": player["team_id"],
+            "team_name": player["team_name"]
+        })
+
+    conn.close()
+
+    return jsonify({
+        "status": "success",
+        "players": data
+    })
+
+
+@app.route("/api/players", methods=["POST"])
+def api_add_player():
+    data = request.get_json() or {}
+
+    name = data.get("name", "").strip()
+    role = data.get("role", "").strip()
+    team_id = data.get("team_id")
+
+    if len(name) < 2:
+        return jsonify({
+            "status": "error",
+            "message": "Player name is required"
+        }), 400
+
+    if not team_id:
+        return jsonify({
+            "status": "error",
+            "message": "Team is required"
+        }), 400
+
+    conn = get_db()
+
+    team = conn.execute(
+        "SELECT id FROM teams WHERE id=?",
+        (team_id,)
+    ).fetchone()
+
+    if not team:
+        conn.close()
+        return jsonify({
+            "status": "error",
+            "message": "Team not found"
+        }), 404
+
+    conn.execute(
+        "INSERT INTO players (name, role, team_id) VALUES (?, ?, ?)",
+        (name, role, team_id)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "status": "success",
+        "message": "Player added successfully"
+    })
 @app.route("/players", methods=["GET", "POST"])
 @login_required
 def players():
