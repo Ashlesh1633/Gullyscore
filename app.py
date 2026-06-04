@@ -768,7 +768,7 @@ def api_add_player():
         "status": "success",
         "message": "Player added successfully"
     })
-    @app.route("/api/matches", methods=["GET"])
+@app.route("/api/matches", methods=["GET"])
 def api_get_matches():
     conn = get_db()
 
