@@ -930,6 +930,8 @@ def api_add_score():
     extra_runs = int(data.get("extra_runs") or 0)
     is_wicket = 1 if data.get("is_wicket") else 0
     note = data.get("note", "").strip()
+    batsman_id = data.get("batsman_id")
+bowler_id = data.get("bowler_id")
 
     if not match_id:
         return jsonify({
@@ -1005,8 +1007,8 @@ def api_add_score():
         innings["innings_no"],
         over_no,
         ball_no,
-        None,
-        None,
+        batsman_id,
+        bowler_id,
         runs,
         extra_type,
         extra_runs,
