@@ -1091,6 +1091,106 @@ def api_add_score():
             "overs": f"{new_balls // 6}.{new_balls % 6}"
         }
     })
+@app.route("/api/undo-score", methods=["POST"])
+def api_undo_score():
+    data = request.get_json() or {}
+    match_id = data.get("match_id")
+
+    if not match_id:
+        return jsonify({
+            "status": "error",
+            "message": "Match ID is required"
+        }), 400
+
+    match_id = int(match_id)
+
+    conn = get_db()
+
+    match = get_match(conn, match_id)
+
+    if not match:
+        conn.close()
+        return jsonify({
+            "status": "error",
+            "message": "Match not found"
+        }), 404
+
+    last_ball = conn.execute("""
+        SELECT *
+        FROM balls
+        WHERE match_id=?
+        ORDER BY id DESC
+        LIMIT 1
+    """, (match_id,)).fetchone()
+
+    if not last_ball:
+        conn.close()
+        return jsonify({
+            "status": "error",
+            "message": "No ball to undo"
+        }), 400
+
+    innings = conn.execute("""
+        SELECT *
+        FROM innings
+        WHERE id=?
+    """, (last_ball["innings_id"],)).fetchone()
+
+    if not innings:
+        conn.close()
+        return jsonify({
+            "status": "error",
+            "message": "Innings not found"
+        }), 404
+
+    legal_ball = 0 if last_ball["extra_type"] in ["Wide", "No Ball"] else 1
+    runs_to_remove = (last_ball["runs"] or 0) + (last_ball["extra_runs"] or 0)
+    wicket_to_remove = last_ball["is_wicket"] or 0
+
+    new_runs = max(0, innings["runs"] - runs_to_remove)
+    new_wickets = max(0, innings["wickets"] - wicket_to_remove)
+    new_balls = max(0, innings["balls"] - legal_ball)
+
+    conn.execute("""
+        UPDATE innings
+        SET runs=?, wickets=?, balls=?, status='LIVE'
+        WHERE id=?
+    """, (
+        new_runs,
+        new_wickets,
+        new_balls,
+        innings["id"]
+    ))
+
+    conn.execute("""
+        DELETE FROM balls
+        WHERE id=?
+    """, (last_ball["id"],))
+
+    conn.execute("""
+        UPDATE matches
+        SET status='LIVE',
+            winner_team_id=NULL,
+            current_innings=?
+        WHERE id=?
+    """, (
+        innings["innings_no"],
+        match_id
+    ))
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "status": "success",
+        "message": "Last ball undone successfully",
+        "score": {
+            "runs": new_runs,
+            "wickets": new_wickets,
+            "balls": new_balls,
+            "overs": f"{new_balls // 6}.{new_balls % 6}"
+        }
+    })
 @app.route("/players", methods=["GET", "POST"])
 @login_required
 def players():
