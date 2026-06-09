@@ -1050,7 +1050,7 @@ def api_add_score():
         note,
         datetime.now().strftime("%H:%M:%S")
     ))
-            ensure_batting_stat(conn, int(match_id), innings["id"], batsman_id)
+    ensure_batting_stat(conn, int(match_id), innings["id"], batsman_id)
     ensure_bowling_stat(conn, int(match_id), innings["id"], bowler_id)
 
     batsman_ball = 0 if extra_type == "Wide" else 1
