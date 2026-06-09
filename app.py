@@ -977,6 +977,27 @@ def api_add_score():
             "status": "error",
             "message": "Innings not found"
         }), 404
+            current_players = conn.execute("""
+        SELECT mcp.*,
+               s.name AS striker_name,
+               ns.name AS non_striker_name,
+               b.name AS bowler_name
+        FROM match_current_players mcp
+        JOIN players s ON mcp.striker_id = s.id
+        JOIN players ns ON mcp.non_striker_id = ns.id
+        JOIN players b ON mcp.bowler_id = b.id
+        WHERE mcp.match_id = ?
+    """, (int(match_id),)).fetchone()
+
+    if not current_players:
+        conn.close()
+        return jsonify({
+            "status": "error",
+            "message": "Set striker, non-striker and bowler first"
+        }), 400
+
+    batsman_id = current_players["striker_id"]
+    bowler_id = current_players["bowler_id"]
 
     legal_ball = 0 if extra_type in ["Wide", "No Ball"] else 1
     total_runs_this_ball = runs + extra_runs
@@ -1029,6 +1050,48 @@ def api_add_score():
         note,
         datetime.now().strftime("%H:%M:%S")
     ))
+            ensure_batting_stat(conn, int(match_id), innings["id"], batsman_id)
+    ensure_bowling_stat(conn, int(match_id), innings["id"], bowler_id)
+
+    batsman_ball = 0 if extra_type == "Wide" else 1
+    fours = 1 if runs == 4 else 0
+    sixes = 1 if runs == 6 else 0
+
+    conn.execute("""
+        UPDATE batting_stats
+        SET runs = runs + ?,
+            balls = balls + ?,
+            fours = fours + ?,
+            sixes = sixes + ?
+        WHERE match_id=? AND innings_id=? AND player_id=?
+    """, (
+        runs,
+        batsman_ball,
+        fours,
+        sixes,
+        int(match_id),
+        innings["id"],
+        batsman_id
+    ))
+
+    bowler_ball = legal_ball
+    bowler_runs = total_runs_this_ball
+    bowler_wicket = is_wicket
+
+    conn.execute("""
+        UPDATE bowling_stats
+        SET runs_given = runs_given + ?,
+            balls = balls + ?,
+            wickets = wickets + ?
+        WHERE match_id=? AND innings_id=? AND player_id=?
+    """, (
+        bowler_runs,
+        bowler_ball,
+        bowler_wicket,
+        int(match_id),
+        innings["id"],
+        bowler_id
+    ))
 
     innings_status = "LIVE"
     innings_completed = False
@@ -1057,8 +1120,29 @@ def api_add_score():
         innings_status,
         innings["id"]
     ))
+    # Automatic strike change
+    new_striker_id = current_players["striker_id"]
+    new_non_striker_id = current_players["non_striker_id"]
 
-    message = "Score added successfully"
+    if innings_status == "LIVE" and is_wicket == 0:
+        # Odd runs change strike
+        if legal_ball == 1 and runs in [1, 3, 5]:
+            new_striker_id, new_non_striker_id = new_non_striker_id, new_striker_id
+
+        # Over completed changes strike again
+        if legal_ball == 1 and new_balls % 6 == 0:
+            new_striker_id, new_non_striker_id = new_non_striker_id, new_striker_id
+
+        conn.execute("""
+            UPDATE match_current_players
+            SET striker_id=?, non_striker_id=?
+            WHERE match_id=?
+        """, (
+            new_striker_id,
+            new_non_striker_id,
+            int(match_id)
+        ))
+        message = "Wicket added. Select new batsman." if is_wicket == 1 else "Score added successfully"
 
     if innings_completed and innings["innings_no"] == 1:
         existing_second = conn.execute("""
