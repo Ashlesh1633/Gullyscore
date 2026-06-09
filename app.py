@@ -122,7 +122,7 @@ def init_db():
         FOREIGN KEY(wicket_player_id) REFERENCES players(id)
     )
     """)
-        cur.execute("""
+    cur.execute("""
     CREATE TABLE IF NOT EXISTS match_current_players (
         match_id INTEGER PRIMARY KEY,
         striker_id INTEGER,
