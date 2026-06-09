@@ -977,7 +977,7 @@ def api_add_score():
             "status": "error",
             "message": "Innings not found"
         }), 404
-            current_players = conn.execute("""
+        current_players = conn.execute("""
         SELECT mcp.*,
                s.name AS striker_name,
                ns.name AS non_striker_name,
